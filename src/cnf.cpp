@@ -774,12 +774,10 @@ bool CNF::no_marked_clauses() const
     return true;
 }
 
-void CNF::add_frat(FILE* os) {
-    if (frat) delete frat;
-    frat = new DratFile<false>(interToOuterMain);
-    frat->setFile(os);
-    frat->set_sumconflicts_ptr(&sumConflicts);
-    frat->set_sqlstats_ptr(sqlStats);
+void CNF::add_proof(std::string fname) {
+    if (proof) delete proof;
+    /* frat = new DratFile<false>(interToOuterMain); */
+    proof =  new Proof(fname.c_str());
 }
 
 vector<uint32_t> CNF::get_outside_lit_incidence()

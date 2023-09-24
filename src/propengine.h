@@ -321,7 +321,7 @@ protected:
         const Lit lit1
         , const Lit lit2
         , const bool red
-        , const uint64_t ID
+        , const ConstraintId ID
         , [[maybe_unused]] const bool checkUnassignedFirst = true
     );
     void detach_modified_clause(
@@ -721,7 +721,7 @@ inline void PropEngine::attach_bin_clause(
     const Lit lit1
     , const Lit lit2
     , const bool red
-    , const uint64_t ID
+    , const ConstraintId ID
     , [[maybe_unused]] const bool checkUnassignedFirst
 ) {
     #ifdef DEBUG_ATTACH

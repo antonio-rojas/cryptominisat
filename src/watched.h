@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "clabstraction.h"
 #include "constants.h"
 #include "cloffset.h"
+#include "prooflogging/ConstraintId.hpp"
 #include "solvertypes.h"
 
 using std::numeric_limits;
@@ -98,12 +99,12 @@ class Watched {
         /**
         @brief Constructor for a binary clause
         */
-        Watched(const Lit lit, const bool red, int32_t ID) :
+        Watched(const Lit lit, const bool red, proof::ConstraintId ID) :
             data1(lit.toInt())
             , type(static_cast<int>(WatchType::watch_binary_t))
-            , data2((int32_t)red | ID<<2) //marking is 2nd bit
+            , data2((int32_t)red | ID.id<<2) //marking is 2nd bit
         {
-            assert(ID < 1LL<< (EFFECTIVELY_USEABLE_BITS-2));
+            assert(ID.id < 1LL<< (EFFECTIVELY_USEABLE_BITS-2));
         }
 
         /**
@@ -183,10 +184,10 @@ class Watched {
             return data2 & 1;
         }
 
-        int32_t get_ID() const
+        proof::ConstraintId get_ID() const
         {
             DEBUG_WATCHED_DO(assert(isBin()));
-            return data2 >> 2;
+            return proof::ConstraintId(data2 >> 2);
         }
 
         void setRed(const bool toSet)

@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include <string.h>
 #include <limits>
 
+#include "prooflogging/ConstraintId.hpp"
 #include "solverconf.h"
 #include "solvertypes.h"
 #include "constants.h"
@@ -39,6 +40,8 @@ THE SOFTWARE.
 #include "clabstraction.h"
 #include "avgcalc.h"
 #include "constants.h"
+
+using namespace proof;
 
 namespace CMSat {
 
@@ -148,7 +151,7 @@ struct ClauseStats
         uint32_t hash_val; //used in BreakID to remove equivalent clauses
     };
     uint32_t last_touched_any = 0;
-    int32_t ID;
+    ConstraintId ID;
 
     #if defined(STATS_NEEDED) || defined (FINAL_PREDICTOR) || defined(NORMAL_CL_USE_STATS)
     uint32_t extra_pos = numeric_limits<uint32_t>::max();

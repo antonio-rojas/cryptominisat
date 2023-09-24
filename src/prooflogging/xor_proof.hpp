@@ -1,0 +1,8 @@
+#pragma once
+
+#include "Proof.hpp"
+
+#include "prooflogging/pbp/pbp_xor_proof.hpp"
+namespace proof {
+    namespace xr = proof::pbp::xr;
+}

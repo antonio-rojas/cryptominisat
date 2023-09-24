@@ -31,19 +31,20 @@ THE SOFTWARE.
 #include "solverconf.h"
 #include "solvertypes.h"
 #include "watcharray.h"
-#include "frat.h"
+#include "prooflogging/Proof.hpp"
+#include "prooflogging/Proof.ipp"
 #include "clauseallocator.h"
 #include "varupdatehelper.h"
 #include "simplefile.h"
 #include "gausswatched.h"
 #include "xor.h"
-#ifdef USE_TBUDDY
-#include <pseudoboolean.h>
-#endif
+#include "sqlstats.h"
 
 #ifdef ARJUN_SERIALIZE
 #include <boost/serialization/vector.hpp>
 #endif
+
+using namespace proof;
 
 namespace CMSat {
 
@@ -100,22 +101,16 @@ public:
     size_t mem_used_renumberer() const;
     size_t mem_used() const;
 
-    CNF(const SolverConf *_conf, std::atomic<bool>* _must_interrupt_inter)
-    {
-        if (_conf != NULL) {
-            conf = *_conf;
-        }
-        frat = new Drat;
+    CNF(const SolverConf *_conf, std::atomic<bool>* _must_interrupt_inter) {
+        if (_conf != NULL) { conf = *_conf; }
+        proof = NULL;
         assert(_must_interrupt_inter != NULL);
         must_interrupt_inter = _must_interrupt_inter;
         longRedCls.resize(3);
         longRedClsSizes.resize(3, 0);
     }
 
-    virtual ~CNF()
-    {
-        delete frat;
-    }
+    virtual ~CNF() { delete proof; }
 
     ClauseAllocator cl_alloc;
     SolverConf conf;
@@ -160,8 +155,9 @@ public:
     vector<AssumptionPair> assumptions;
 
     //frat
-    Drat* frat;
-    void add_frat(FILE* os);
+    using Proof = Proof<xorengine::UsedTypes>;
+    Proof* proof;
+    void add_proof(std::string fname);
 
     //Clauses
     vector<ClOffset> longIrredCls;
@@ -200,7 +196,6 @@ public:
     bool xor_clauses_updated = false;
     BinTriStats binTri;
     LitStats litStats;
-    int32_t clauseID = 0;
     int64_t restartID = 1;
     SQLStats* sqlStats = NULL;
 
@@ -218,8 +213,6 @@ public:
 
     bool okay() const
     {
-        assert(!
-        (!ok && frat->enabled() && unsat_cl_ID == 0 && unsat_cl_ID != -1) && "If in UNSAT state, and we have FRAT, we MUST already know the unsat_cl_ID or it must be -1, i.e. known by tbuddy");
         return ok;
     }
 
@@ -396,7 +389,6 @@ public:
     Contains OUTER variables */
     vector<bool> undef_must_set_vars;
     vector<int32_t> unit_cl_IDs;
-    int32_t unsat_cl_ID = 0;
 
 protected:
     virtual void new_var(

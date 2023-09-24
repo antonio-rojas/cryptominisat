@@ -1,4 +1,4 @@
-/******************************************
+/******************* id;***********************
 Copyright (C) 2009-2020 Authors of CryptoMiniSat, see AUTHORS file
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,11 +30,9 @@ THE SOFTWARE.
 #include <set>
 #include <iostream>
 #include <algorithm>
-#ifdef USE_TBUDDY
-#include <pseudoboolean.h>
-namespace tbdd = trustbdd;
-#endif
+#include "prooflogging/ConstraintId.hpp"
 
+using namespace proof;
 using std::vector;
 using std::set;
 
@@ -44,8 +42,7 @@ namespace CMSat {
 class Xor
 {
 public:
-    Xor()
-    {}
+    Xor() {}
 
     explicit Xor(const vector<uint32_t>& cl, const bool _rhs, const vector<uint32_t>& _clash_vars):
         rhs(_rhs)
@@ -53,19 +50,6 @@ public:
     {
         for (uint32_t i = 0; i < cl.size(); i++) vars.push_back(cl[i]);
     }
-
-#ifdef USE_TBUDDY
-    tbdd::xor_constraint* create_bdd_xor()
-    {
-        if (bdd == NULL) {
-            ilist l = ilist_new(vars.size());
-            ilist_resize(l, vars.size());
-            for (uint32_t i = 0; i < vars.size(); i++) l[i] = vars[i]+1;
-            bdd = new tbdd::xor_constraint(l, rhs);
-        }
-        return bdd;
-    }
-#endif
 
     template<typename T>
     explicit Xor(const T& cl, const bool _rhs, const vector<uint32_t>& _clash_vars):
@@ -193,9 +177,7 @@ public:
     vector<uint32_t> clash_vars;
     bool detached = false;
     vector<uint32_t> vars;
-    #ifdef USE_TBUDDY
-    tbdd::xor_constraint* bdd = NULL;
-    #endif
+    ConstraintId id;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Xor& thisXor)
