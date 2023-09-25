@@ -1,19 +1,16 @@
 #include "pbp_xor_proof.hpp"
 #include "pbp_proof.hpp"
-#include "xorengine/private/myXor.hpp"
+/* #include "xorengine/private/myXor.hpp" */
 #include "xorengine/XorDetector.ipp"
 #include "prooflogging/xor_2_clauses.hpp"
+#include "solvertypesmini.h"
 
 using namespace proof::pbp;
 using namespace proof::pbp::xr;
 using namespace xorp;
 
-template<typename Types>
 class FullAdder {
 private:
-    using Lit = typename Types::Lit;
-    using Var = typename Types::Var;
-
     // could be int8_t but then we would need to fix printing
     typedef int16_t CoeffTypeLitDef;
 
@@ -24,32 +21,33 @@ public:
     proof::ConstraintId geq;
     proof::ConstraintId leq;
 
-    FullAdder(Proof<Types>& proof, Lit x1, Lit x2):
-        y(xorp::variable::toLit<Lit>(proof.newVar())),
-        z(xorp::variable::toLit<Lit>(proof.newVar()))
+    FullAdder(Proof& proof, Lit x1, Lit x2):
+        y(Lit(proof.newVar(), false)),
+        z(Lit(proof.newVar(), false))
     {
         assert(x1 != x2);
-        LiteralDefinition<CoeffTypeLitDef, Types> defY(proof, y, {1,1}, {x1, x2}, 2);
-        LiteralDefinition<CoeffTypeLitDef, Types> defZ(proof, z, {1, 1, -2}, {x1, x2, y}, 1);
+        LiteralDefinition<CoeffTypeLitDef> defY(proof, y, {1,1}, {x1, x2}, 2);
+        LiteralDefinition<CoeffTypeLitDef> defZ(proof, z, {1, 1, -2}, {x1, x2, y}, 1);
         logEquality(proof, defY, defZ);
     }
 
-    FullAdder(Proof<Types>& proof, Lit x1, Lit x2, Lit x3):
-        y(xorp::variable::toLit<Lit>(proof.newVar())),
-        z(xorp::variable::toLit<Lit>(proof.newVar()))
+    FullAdder(Proof& proof, Lit x1, Lit x2, Lit x3):
+        y(Lit(proof.newVar(), false)),
+        z(Lit(proof.newVar(), false))
 
     {
         assert(x1 != x2);
         assert(x2 != x3);
         assert(x1 != x3);
-        LiteralDefinition<CoeffTypeLitDef, Types> defY(proof, y, {1, 1, 1}, {x1, x2, x3}, 2);
-        LiteralDefinition<CoeffTypeLitDef, Types> defZ(proof, z, {1, 1, 1, -2}, {x1, x2, x3, y}, 1);
+        LiteralDefinition<CoeffTypeLitDef> defY(proof, y, {1, 1, 1}, {x1, x2, x3}, 2);
+        LiteralDefinition<CoeffTypeLitDef> defZ(proof, z, {1, 1, 1, -2}, {x1, x2, x3, y}, 1);
         logEquality(proof,defY, defZ);
     }
 
-    void logEquality(Proof<Types>& proof, LiteralDefinition<CoeffTypeLitDef, Types>& defY, LiteralDefinition<CoeffTypeLitDef, Types>& defZ) {
+    void logEquality(Proof& proof,
+            LiteralDefinition<CoeffTypeLitDef>& defY, LiteralDefinition<CoeffTypeLitDef>& defZ) {
         {
-            PolishNotationStep<Types> stepGeq(proof);
+            PolishNotationStep stepGeq(proof);
             stepGeq.append(defZ.rightImpl);
             stepGeq.append(defY.rightImpl).multiply(2).add();
             stepGeq.floor_div(3);
@@ -57,7 +55,7 @@ public:
         }
 
         {
-            PolishNotationStep<Types> stepLeq(proof);
+            PolishNotationStep stepLeq(proof);
             stepLeq.append(defZ.leftImpl);
             stepLeq.append(defY.leftImpl).multiply(2).add();
             stepLeq.floor_div(3);
@@ -66,18 +64,16 @@ public:
     }
 };
 
-template<typename Types>
-XorHandle<Types> proof::pbp::xr::xorFromEquality(proof::ConstraintId a, proof::ConstraintId b) {
-    return XorHandle<Types>{a,b};
+XorHandle proof::pbp::xr::xorFromEquality(proof::ConstraintId a, proof::ConstraintId b) {
+    return XorHandle{a,b};
 }
 
-template<typename Types>
-XorHandle<Types> proof::pbp::xr::xorSum(Proof<Types>& proof, const std::vector<XorHandle<Types>>& v) {
+XorHandle proof::pbp::xr::xorSum(Proof& proof, const std::vector<XorHandle>& v) {
     assert(v.size() > 0);
-    XorHandle<Types> result;
+    XorHandle result;
 
     {
-        PolishNotationStep<Types> step(proof);
+        PolishNotationStep step(proof);
         auto it = v.begin();
         step.append(it->a);
         it++;
@@ -88,7 +84,7 @@ XorHandle<Types> proof::pbp::xr::xorSum(Proof<Types>& proof, const std::vector<X
     }
 
     {
-        PolishNotationStep<Types> step(proof);
+        PolishNotationStep step(proof);
         auto it = v.begin();
         step.append(it->b);
         it++;
@@ -101,8 +97,7 @@ XorHandle<Types> proof::pbp::xr::xorSum(Proof<Types>& proof, const std::vector<X
     return result;
 }
 
-template<typename Types>
-void reasonGeneration(PolishNotationStep<Types>& step, const XorHandle<Types>& xr, const std::vector<typename Types::Lit>& clause) {
+void reasonGeneration(PolishNotationStep& step, const XorHandle& xr, const std::vector<Lit>& clause) {
     step.append(xr.a);
     for (auto lit: clause) {
         step.appendLit(lit).add();
@@ -110,18 +105,18 @@ void reasonGeneration(PolishNotationStep<Types>& step, const XorHandle<Types>& x
     step.floor_div(2).multiply(2).append(xr.b).add();
 }
 
-template<typename Types>
-proof::ConstraintId proof::pbp::xr::reasonGeneration(Proof<Types>& proof, const XorHandle<Types>& xr, const std::vector<typename Types::Lit>& clause) {
+proof::ConstraintId proof::pbp::xr::reasonGeneration(
+        Proof& proof, const XorHandle& xr, const std::vector<Lit>& clause) {
     proof::ConstraintId result;
     {
-        PolishNotationStep<Types> step(proof);
+        PolishNotationStep step(proof);
         ::reasonGeneration(step, xr, clause);
         result = step.id;
     }
 
     #if !defined(NDEBUG)
     {
-        EqualityCheck<Types> check(proof, result);
+        EqualityCheck check(proof, result);
         for (auto lit: clause) {
             check.addTerm(1, lit);
         }
@@ -132,18 +127,14 @@ proof::ConstraintId proof::pbp::xr::reasonGeneration(Proof<Types>& proof, const 
     return result;
 }
 
-template<typename Types>
 class XORFromClauses {
 private:
-    using Lit = typename Types::Lit;
-    using Var = typename Types::Var;
-
-    Proof<Types>& proof;
-    xorp::Xor<Types>& xr;
+    Proof& proof;
+    xorp::Xor& xr;
 
     struct XorWithFreeParity {
-        XorHandle<Types> id;
-        Lit parityLit = xorp::literal::undef<Lit>();
+        XorHandle id;
+        Lit parityLit = lit_Undef;
     };
 
     XorWithFreeParity xorWithFreeParity() {
@@ -154,7 +145,7 @@ private:
 
         XorWithFreeParity result;
 
-        std::vector<FullAdder<Types>> adderChain;
+        std::vector<FullAdder> adderChain;
 
         auto it = xr.lits.rbegin();
         if (xr.lits.size() % 2 == 0) {
@@ -178,7 +169,7 @@ private:
         result.parityLit = adderChain.back().z;
 
         {
-            PolishNotationStep<Types> stepGeq(proof);
+            PolishNotationStep stepGeq(proof);
 
             auto adderIt = adderChain.begin();
             stepGeq.append(adderIt->geq);
@@ -191,7 +182,7 @@ private:
         }
 
         {
-            PolishNotationStep<Types> stepLeq(proof);
+            PolishNotationStep stepLeq(proof);
 
             auto adderIt = adderChain.begin();
             stepLeq.append(adderIt->leq);
@@ -205,13 +196,13 @@ private:
         return result;
     }
 
-    XorHandle<Types> fixParity(const XorWithFreeParity& fp, proof::ConstraintId unitParityLit) {
+    XorHandle fixParity(const XorWithFreeParity& fp, proof::ConstraintId unitParityLit) {
         #if !defined(NDEBUG)
             proof << "* fix of xor with free parity\n";
         #endif
-        XorHandle<Types> result;
+        XorHandle result;
         {
-            PolishNotationStep<Types> step(proof);
+            PolishNotationStep step(proof);
             step.append(fp.id.a);
             if (xr.rhs) {
                 step.appendLit(~fp.parityLit);
@@ -223,7 +214,7 @@ private:
         }
 
         {
-            PolishNotationStep<Types> step(proof);
+            PolishNotationStep step(proof);
             step.append(fp.id.b);
             if (!xr.rhs) {
                 step.appendLit(fp.parityLit);
@@ -248,7 +239,7 @@ private:
         }
 
         size_t maxFlipBit = 0;
-        PolishNotationStep<Types> step(proof);
+        PolishNotationStep step(proof);
         for (size_t i = 0; i < constraints.size(); i++) {
             uint32_t assignment = (i << 1);
             std::cout << popCountMod2(assignment) << std::endl;
@@ -297,7 +288,7 @@ private:
         #if !defined(NDEBUG)
             proof << "* derive unit clause of parity literal\n";
         #endif
-        PolishNotationStep<Types> step(proof);
+        PolishNotationStep step(proof);
 
         std::vector<DFSInfo> open;
         open.emplace_back(0);
@@ -376,8 +367,8 @@ private:
 
 public:
     XORFromClauses(
-        Proof<Types>& _proof,
-        xorp::Xor<Types>& _xr
+        Proof& _proof,
+        xorp::Xor& _xr
     )
         : proof(_proof)
         , xr(_xr)
@@ -402,7 +393,7 @@ public:
         if (xr.rhs != true) {
             parityLit = ~parityLit;
         }
-        proof::pbp::EqualityCheck<Types> check(proof, id);
+        proof::pbp::EqualityCheck check(proof, id);
         check.addTerm(1, parityLit);
         check.setDegree(1);
     }
@@ -417,13 +408,13 @@ public:
      * literal unnegated apear before claues where the literal is
      * negated
      */
-    XorHandle<Types> fromOrderdClauses(const std::vector<proof::ConstraintId>& constraints) {
+    XorHandle fromOrderdClauses(const std::vector<proof::ConstraintId>& constraints) {
         auto fp = xorWithFreeParity();
         auto unit = unitFromOrderedClauses(fp, constraints);
         return fixParity(fp, unit);
     }
 
-    XorHandle<Types> fromProofTree(xorp::BDD& tree) {
+    XorHandle fromProofTree(xorp::BDD& tree) {
         auto fp = xorWithFreeParity();
         auto unit = unitFromProofTree(fp, tree);
         #if !defined(NDEBUG)
@@ -435,14 +426,14 @@ public:
 };
 
 template<typename Types>
-XorHandle<Types> proof::pbp::xr::newXorHandleFromProofTree(proof::pbp::Proof<Types>& proof, xorp::Xor<Types>& xr, xorp::BDD& proofTree) {
-    XORFromClauses<Types> helper(proof, xr);
+XorHandle proof::pbp::xr::newXorHandleFromProofTree(proof::pbp::Proof& proof, xorp::Xor& xr, xorp::BDD& proofTree) {
+    XORFromClauses helper(proof, xr);
     return helper.fromProofTree(proofTree);
 }
 
 template<typename Types>
-void proof::pbp::xr::deleteXor(proof::pbp::Proof<Types>& proof, const XorHandle<Types>& xr) {
-    DeleteStep<Types> step(proof);
+void proof::pbp::xr::deleteXor(proof::pbp::Proof& proof, const XorHandle& xr) {
+    DeleteStep step(proof);
     step.addDeletion(xr.a);
     step.addDeletion(xr.b);
 }

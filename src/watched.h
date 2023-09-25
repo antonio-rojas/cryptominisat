@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "solvertypes.h"
 
 using std::numeric_limits;
+using namespace proof;
 
 namespace CMSat {
 
@@ -99,7 +100,7 @@ class Watched {
         /**
         @brief Constructor for a binary clause
         */
-        Watched(const Lit lit, const bool red, proof::ConstraintId ID) :
+        Watched(const Lit lit, const bool red, ConstraintId ID) :
             data1(lit.toInt())
             , type(static_cast<int>(WatchType::watch_binary_t))
             , data2((int32_t)red | ID.id<<2) //marking is 2nd bit
@@ -311,7 +312,7 @@ struct OccurClause {
 
         if (ws.isBin()) {
             assert(other.ws.isBin());
-            return ws.get_ID() < other.ws.get_ID();
+            return ws.get_ID().id < other.ws.get_ID().id;
         }
 
         assert(!ws.isBNN()); // no idea how this would work
@@ -348,7 +349,7 @@ struct WatchSorterBinTriLong {
                 return !a.red();
             }
 
-            return (a.get_ID() < b.get_ID());
+            return (a.get_ID().id < b.get_ID().id);
         }
     };
 

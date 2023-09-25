@@ -2,10 +2,13 @@
 
 #include <fstream>
 #include <iostream>
+#include <vector>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <unordered_set>
+#include <cstdint>
+#include <cassert>
 
 static uint16_t const strHex[16] = {'0', '1', '2', '3', '4', '5', '6',
 '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};

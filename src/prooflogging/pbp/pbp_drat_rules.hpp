@@ -9,9 +9,9 @@ using namespace CMSat;
 namespace proof {
 namespace pbp {
 namespace drat_rules {
-    template<typename Types, typename T>
-    ConstraintId add(Proof<Types>& proof, T begin, T end) {
-        PBPRStep<Types> step(proof);
+    template<typename T>
+    ConstraintId add(Proof& proof, T begin, T end) {
+        PBPRStep step(proof);
         for (auto it = begin; it != end; ++it) {
             step.template addTerm<int>(1, *it);
         }
@@ -19,51 +19,50 @@ namespace drat_rules {
         return step.id;
     }
 
-    template<typename Types, typename T>
-    ConstraintId add(Proof<Types>& proof, T dat) {
+    template<typename T>
+    ConstraintId add(Proof& proof, T dat) {
         return add(proof, dat.begin(), dat.end());
     }
-    
-    template<typename Types, typename T>
-    ConstraintId add(Proof<Types>& proof, Lit a) {
-        PBPRStep<Types> step(proof);
+
+    template<typename T>
+    ConstraintId add(Proof& proof, Lit a) {
+        PBPRStep step(proof);
         step.template addTerm<int>(1, a);
         step.setDegree(1);
         return step.id;
     }
 
-    template<typename Types, typename T>
-    ConstraintId add2(Proof<Types>& proof, T a, T b) {
-        PBPRStep<Types> step(proof);
+    template<typename T>
+    ConstraintId add2(Proof& proof, T a, T b) {
+        PBPRStep step(proof);
         step.template addTerm<int>(1, a);
         step.template addTerm<int>(1, b);
         step.setDegree(1);
         return step.id;
     }
 
-    template<typename Types, typename T>
-    void del(Proof<Types>& proof, ConstraintId id, T begin, T end) {
+    template<typename T>
+    void del(Proof& proof, ConstraintId id, T begin, T end) {
         #if !defined(NDEBUG)
-            EqualityCheck<Types> check(proof, id);
+            EqualityCheck check(proof, id);
             for (T it = begin; it != end; ++it) {
                 check.addTerm(1, *it);
             }
             check.setDegree(1);
         #endif
 
-        DeleteStep<Types> del(proof);
+        DeleteStep del(proof);
         del.addDeletion(id);
     }
-    template<typename Types, typename T>
-    void del(Proof<Types>& proof, ConstraintId id, T dat) {
+    template<typename T>
+    void del(Proof& proof, ConstraintId id, T dat) {
         del(proof, id, dat.begin(), dat.end());
     }
 
-    template<typename Types>
-    ConstraintId contradiction(Proof<Types>& proof) {
-        typename Types::Lit* l = nullptr;
+    inline ConstraintId contradiction(Proof& proof) {
+        Lit* l = nullptr;
         ConstraintId result = add(proof, l, l);
-        ContradictionStep<Types> step(proof, result);
+        ContradictionStep step(proof, result);
         return result;
     }
 }}}

@@ -34,7 +34,6 @@ THE SOFTWARE.
 #include <locale>
 #include <random>
 #include "prooflogging/ConstraintId.hpp"
-#include "prooflogging/Proof.hpp"
 #include "prooflogging/drat_rules.hpp"
 
 
@@ -1731,7 +1730,7 @@ lbool Solver::solve_with_assumptions(
 
 void Solver::write_final_frat_clauses()
 {
-    if (!frat->enabled()) return;
+    if (!proof) return;
     assert(decisionLevel() == 0);
     *frat << "write final start\n";
 

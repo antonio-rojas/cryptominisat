@@ -31,7 +31,6 @@ THE SOFTWARE.
 #include "solverconf.h"
 #include "solvertypes.h"
 #include "watcharray.h"
-#include "prooflogging/Proof.hpp"
 #include "prooflogging/Proof.ipp"
 #include "clauseallocator.h"
 #include "varupdatehelper.h"
@@ -155,7 +154,7 @@ public:
     vector<AssumptionPair> assumptions;
 
     //frat
-    using Proof = Proof<xorengine::UsedTypes>;
+    using Proof = pbp::Proof;
     Proof* proof;
     void add_proof(std::string fname);
 

@@ -7,12 +7,13 @@
 #include <string>
 #include "solvertypesmini.h"
 
-
-#include "xorengine/SolverAdapter.hpp"
 #include "prooflogging/FastStream.hpp"
 #include "pbp_LitPrinter.hpp"
+#include "prooflogging/ConstraintId.hpp"
 
 using namespace CMSat;
+
+namespace CMSat { struct Solver; }
 
 namespace proof {
 namespace pbp {
@@ -20,14 +21,14 @@ namespace pbp {
         ConstraintId maxId;
         size_t formulaRead;
         FastStream stream;
-        Solver* solver;
+        /* Solver* solver; */
 
     public:
         Proof(std::string filename, Solver* _solver)
             : maxId{0}
             , formulaRead(0)
             , stream(filename)
-            , solver(_solver)
+            /* , solver(_solver) */
         {
             stream << "pseudo-Boolean proof version 2.0\n";
         }
@@ -38,10 +39,7 @@ namespace pbp {
         }
 
         Proof& operator<<(const Lit& lit) {
-            // todo: this does not work if lit is derived from int,
-            // because then coefficients will not be printed
-            // correctly.
-            stream << lit;
+            stream << lit.toInt();
             return *this;
         }
 
@@ -72,9 +70,10 @@ namespace pbp {
         }
 
         uint32_t newVar() {
-            return solver.getFreshVar();
+            assert(false && "TODO");
+            /* return solver->newVar(); */
+            return 1;
         }
-
     };
 
     class ContradictionStep {

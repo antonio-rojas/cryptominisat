@@ -236,7 +236,7 @@ class Solver : public Searcher
             const Lit lit1
             , const Lit lit2
             , const bool red
-            , const int32_t ID
+            , const ConstraintId ID
             , [[maybe_unused]] const bool checkUnassignedFirst = true
         );
         void detach_bin_clause(
