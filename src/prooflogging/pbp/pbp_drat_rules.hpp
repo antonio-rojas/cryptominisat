@@ -6,7 +6,6 @@
 
 using namespace CMSat;
 
-namespace proof {
 namespace pbp {
 namespace drat_rules {
     template<typename T>
@@ -65,4 +64,4 @@ namespace drat_rules {
         ContradictionStep step(proof, result);
         return result;
     }
-}}}
+}}

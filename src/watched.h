@@ -35,7 +35,6 @@ THE SOFTWARE.
 #include "solvertypes.h"
 
 using std::numeric_limits;
-using namespace proof;
 
 namespace CMSat {
 
@@ -185,10 +184,10 @@ class Watched {
             return data2 & 1;
         }
 
-        proof::ConstraintId get_ID() const
+        ConstraintId get_ID() const
         {
             DEBUG_WATCHED_DO(assert(isBin()));
-            return proof::ConstraintId(data2 >> 2);
+            return ConstraintId(data2 >> 2);
         }
 
         void setRed(const bool toSet)

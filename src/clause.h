@@ -41,8 +41,6 @@ THE SOFTWARE.
 #include "avgcalc.h"
 #include "constants.h"
 
-using namespace proof;
-
 namespace CMSat {
 
 class ClauseAllocator;

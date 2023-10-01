@@ -102,7 +102,6 @@ add_definitions( -DTRACE )
 
 set(cryptoms_lib_files
     cnf.cpp
-    frat.cpp
     propengine.cpp
     varreplacer.cpp
     clausecleaner.cpp

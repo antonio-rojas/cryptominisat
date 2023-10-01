@@ -32,7 +32,6 @@ THE SOFTWARE.
 #include <algorithm>
 #include "prooflogging/ConstraintId.hpp"
 
-using namespace proof;
 using std::vector;
 using std::set;
 

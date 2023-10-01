@@ -43,8 +43,6 @@ THE SOFTWARE.
 #include <boost/serialization/vector.hpp>
 #endif
 
-using namespace proof;
-
 namespace CMSat {
 
 class ClauseAllocator;
@@ -154,8 +152,7 @@ public:
     vector<AssumptionPair> assumptions;
 
     //frat
-    using Proof = pbp::Proof;
-    Proof* proof;
+    pbp::Proof* proof;
     void add_proof(std::string fname);
 
     //Clauses

@@ -11,11 +11,16 @@
 #include "pbp_LitPrinter.hpp"
 #include "prooflogging/ConstraintId.hpp"
 
+#define EOM \
+    logging::EndOfMessage(__FILE__, __LINE__)
+
+#define LOG(X) \
+    if (logging::use::X) logging::Streams::X()
+
 using namespace CMSat;
 
 namespace CMSat { struct Solver; }
 
-namespace proof {
 namespace pbp {
     class Proof {
         ConstraintId maxId;
@@ -281,4 +286,4 @@ namespace pbp {
             }
         }
     };
-}} //closing namespaces
+} //closing namespaces

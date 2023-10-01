@@ -3,7 +3,6 @@
 #include "prooflogging/FastStream.hpp"
 #include <cstdint>
 
-namespace proof {
 namespace pbp {
     class LitPrinter {
     public:
@@ -40,5 +39,4 @@ namespace pbp {
         }
         return out;
     }
-}
 }
