@@ -5,13 +5,10 @@
 
 #include "prooflogging/bdd.hpp"
 #include "pbp_xor_proof.hpp"
-#include "pbp_proof.hpp"
+#include "prooflogging/pbp/pbp_proof.hpp"
 #include "xor.h"
 #include "clause.h"
 
-/* #include "xorengine/private/myXor.hpp" */
-/* #include "xorengine/XorDetector.ipp" */
-/* #include "prooflogging/xor_2_clauses.hpp" */
 #include "solvertypesmini.h"
 
 using std::make_pair;
@@ -19,6 +16,8 @@ using std::vector;
 using std::unordered_set;
 using std::map;
 using std::ostream;
+
+namespace pbp { namespace xr {}}
 
 
 vector<Lit> number2clause(const std::vector<uint32_t>& vars, uint32_t number) {
@@ -57,11 +56,11 @@ public:
     {
         assert(x1 != x2);
         pbp::LiteralDefinition<CoeffTypeLitDef> defY(proof, y, {1,1}, {x1, x2}, 2);
-        LiteralDefinition<CoeffTypeLitDef> defZ(proof, z, {1, 1, -2}, {x1, x2, y}, 1);
+        pbp::LiteralDefinition<CoeffTypeLitDef> defZ(proof, z, {1, 1, -2}, {x1, x2, y}, 1);
         logEquality(proof, defY, defZ);
     }
 
-    FullAdder(Proof& proof, Lit x1, Lit x2, Lit x3):
+    FullAdder(pbp::Proof& proof, Lit x1, Lit x2, Lit x3):
         y(Lit(proof.newVar(), false)),
         z(Lit(proof.newVar(), false))
 
@@ -69,15 +68,16 @@ public:
         assert(x1 != x2);
         assert(x2 != x3);
         assert(x1 != x3);
-        LiteralDefinition<CoeffTypeLitDef> defY(proof, y, {1, 1, 1}, {x1, x2, x3}, 2);
-        LiteralDefinition<CoeffTypeLitDef> defZ(proof, z, {1, 1, 1, -2}, {x1, x2, x3, y}, 1);
+        pbp::LiteralDefinition<CoeffTypeLitDef> defY(proof, y, {1, 1, 1}, {x1, x2, x3}, 2);
+        pbp::LiteralDefinition<CoeffTypeLitDef> defZ(proof, z, {1, 1, 1, -2}, {x1, x2, x3, y}, 1);
         logEquality(proof,defY, defZ);
     }
 
-    void logEquality(Proof& proof,
-            LiteralDefinition<CoeffTypeLitDef>& defY, LiteralDefinition<CoeffTypeLitDef>& defZ) {
+    void logEquality(pbp::Proof& proof,
+            pbp::LiteralDefinition<CoeffTypeLitDef>& defY,
+            pbp::LiteralDefinition<CoeffTypeLitDef>& defZ) {
         {
-            PolishNotationStep stepGeq(proof);
+            pbp::PolishNotationStep stepGeq(proof);
             stepGeq.append(defZ.rightImpl);
             stepGeq.append(defY.rightImpl).multiply(2).add();
             stepGeq.floor_div(3);
@@ -85,7 +85,7 @@ public:
         }
 
         {
-            PolishNotationStep stepLeq(proof);
+            pbp::PolishNotationStep stepLeq(proof);
             stepLeq.append(defZ.leftImpl);
             stepLeq.append(defY.leftImpl).multiply(2).add();
             stepLeq.floor_div(3);
@@ -94,11 +94,11 @@ public:
     }
 };
 
-XorHandle pbp::xr::xorFromEquality(ConstraintId a, ConstraintId b) {
+pbp::xr::XorHandle pbp::xr::xorFromEquality(ConstraintId a, ConstraintId b) {
     return XorHandle{a,b};
 }
 
-XorHandle pbp::xr::xorSum(Proof& proof, const vector<XorHandle>& v) {
+pbp::xr::XorHandle pbp::xr::xorSum(pbp::Proof& proof, const vector<pbp::xr::XorHandle>& v) {
     assert(v.size() > 0);
     XorHandle result;
 
@@ -127,7 +127,7 @@ XorHandle pbp::xr::xorSum(Proof& proof, const vector<XorHandle>& v) {
     return result;
 }
 
-void reasonGeneration(PolishNotationStep& step, const XorHandle& xr, const vector<Lit>& clause) {
+void reasonGeneration(pbp::PolishNotationStep& step, const pbp::xr::XorHandle& xr, const vector<Lit>& clause) {
     step.append(xr.a);
     for (auto lit: clause) {
         step.appendLit(lit).add();
@@ -159,11 +159,11 @@ ConstraintId pbp::xr::reasonGeneration(
 
 class XORFromClauses {
 private:
-    Proof& proof;
+    pbp::Proof& proof;
     Xor& xr;
 
     struct XorWithFreeParity {
-        XorHandle id;
+        pbp::xr::XorHandle id;
         Lit parityLit = lit_Undef;
     };
 
@@ -201,7 +201,7 @@ private:
 
         // Geq
         {
-            PolishNotationStep stepGeq(proof);
+            pbp::PolishNotationStep stepGeq(proof);
 
             auto adderIt = adderChain.begin();
             stepGeq.append(adderIt->geq);
@@ -215,7 +215,7 @@ private:
 
         // Leq
         {
-            PolishNotationStep stepLeq(proof);
+            pbp::PolishNotationStep stepLeq(proof);
 
             auto adderIt = adderChain.begin();
             stepLeq.append(adderIt->leq);
@@ -229,13 +229,13 @@ private:
         return result;
     }
 
-    XorHandle fixParity(const XorWithFreeParity& fp, ConstraintId unitParityLit) {
+    pbp::xr::XorHandle fixParity(const XorWithFreeParity& fp, ConstraintId unitParityLit) {
         #if !defined(NDEBUG)
             proof << "* fix of xor with free parity\n";
         #endif
-        XorHandle result;
+        pbp::xr::XorHandle result;
         {
-            PolishNotationStep step(proof);
+            pbp::PolishNotationStep step(proof);
             step.append(fp.id.a);
             if (xr.rhs) {
                 step.appendLit(~fp.parityLit);
@@ -247,7 +247,7 @@ private:
         }
 
         {
-            PolishNotationStep step(proof);
+            pbp::PolishNotationStep step(proof);
             step.append(fp.id.b);
             if (!xr.rhs) {
                 step.appendLit(fp.parityLit);
@@ -272,7 +272,7 @@ private:
         }
 
         size_t maxFlipBit = 0;
-        PolishNotationStep step(proof);
+        pbp::PolishNotationStep step(proof);
         for (size_t i = 0; i < constraints.size(); i++) {
             uint32_t assignment = (i << 1);
             cout << __builtin_popcount(assignment) << endl;
@@ -321,7 +321,7 @@ private:
         #if !defined(NDEBUG)
             proof << "* derive unit clause of parity literal\n";
         #endif
-        PolishNotationStep step(proof);
+        pbp::PolishNotationStep step(proof);
 
         vector<DFSInfo> open;
         open.emplace_back(0);
@@ -399,7 +399,7 @@ private:
 
 public:
     XORFromClauses(
-        Proof& _proof,
+        pbp::Proof& _proof,
         Xor& _xr
     )
         : proof(_proof)
@@ -438,13 +438,13 @@ public:
      * literal unnegated apear before claues where the literal is
      * negated
      */
-    XorHandle fromOrderdClauses(const vector<ConstraintId>& constraints) {
+    pbp::xr::XorHandle fromOrderdClauses(const vector<ConstraintId>& constraints) {
         auto fp = xorWithFreeParity();
         auto unit = unitFromOrderedClauses(fp, constraints);
         return fixParity(fp, unit);
     }
 
-    XorHandle fromProofTree(BDD& tree) {
+    pbp::xr::XorHandle fromProofTree(BDD& tree) {
         auto fp = xorWithFreeParity();
         auto unit = unitFromProofTree(fp, tree);
 #ifndef NDEBUG
@@ -455,7 +455,7 @@ public:
 
 };
 
-XorHandle pbp::xr::newXorHandleFromProofTree(pbp::Proof& proof, Xor& xr, BDD& proofTree) {
+pbp::xr::XorHandle pbp::xr::newXorHandleFromProofTree(pbp::Proof& proof, Xor& xr, BDD& proofTree) {
     XORFromClauses helper(proof, xr);
     return helper.fromProofTree(proofTree);
 }

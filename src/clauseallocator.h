@@ -20,9 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ***********************************************/
 
-#ifndef CLAUSEALLOCATOR_H
-#define CLAUSEALLOCATOR_H
-
+#pragma once
 
 #include "constants.h"
 #include "cloffset.h"
@@ -124,5 +122,3 @@ class ClauseAllocator {
 };
 
 } //end namespace
-
-#endif //CLAUSEALLOCATOR_H

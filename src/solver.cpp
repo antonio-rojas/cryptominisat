@@ -34,7 +34,7 @@ THE SOFTWARE.
 #include <locale>
 #include <random>
 #include "prooflogging/ConstraintId.hpp"
-#include "prooflogging/drat_rules.hpp"
+#include "prooflogging/pbp/pbp_drat_rules.hpp"
 
 
 #ifdef ARJUN_SERIALIZE

@@ -26,13 +26,13 @@ THE SOFTWARE.
 #include <limits>
 
 #include "constants.h"
+#include "clauseallocator.h"
 #include "vardata.h"
 #include "propby.h"
 #include "solverconf.h"
 #include "solvertypes.h"
 #include "watcharray.h"
-#include "prooflogging/Proof.ipp"
-#include "clauseallocator.h"
+#include "prooflogging/pbp/pbp_proof.hpp"
 #include "varupdatehelper.h"
 #include "simplefile.h"
 #include "gausswatched.h"

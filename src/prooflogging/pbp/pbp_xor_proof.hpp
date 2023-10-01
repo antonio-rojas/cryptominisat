@@ -7,6 +7,7 @@
 #include "prooflogging/bdd.hpp"
 
 namespace pbp {
+    namespace xr {
     class XorHandle {
     public:
         ConstraintId a;
@@ -30,4 +31,4 @@ namespace pbp {
         const std::vector<Lit>& reasonClause);
 
     void deleteXor(Proof& proof, const XorHandle& xr);
-}
+}}

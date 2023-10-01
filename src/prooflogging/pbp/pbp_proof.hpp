@@ -11,11 +11,11 @@
 #include "pbp_LitPrinter.hpp"
 #include "prooflogging/ConstraintId.hpp"
 
-#define EOM \
-    logging::EndOfMessage(__FILE__, __LINE__)
+#define EOM ()
+    /* logging::EndOfMessage(__FILE__, __LINE__) */
 
-#define LOG(X) \
-    if (logging::use::X) logging::Streams::X()
+#define LOG(X) ()
+    /* if (logging::use::X) logging::Streams::X() */
 
 using namespace CMSat;
 
@@ -26,14 +26,14 @@ namespace pbp {
         ConstraintId maxId;
         size_t formulaRead;
         FastStream stream;
-        /* Solver* solver; */
+        Solver* solver;
 
     public:
         Proof(std::string filename, Solver* _solver)
             : maxId{0}
             , formulaRead(0)
             , stream(filename)
-            /* , solver(_solver) */
+            , solver(_solver)
         {
             stream << "pseudo-Boolean proof version 2.0\n";
         }
@@ -113,8 +113,8 @@ namespace pbp {
 
         PBPRStep(Proof& _proof, Lit _mapTo):
             proof(_proof),
-            id(_proof.getNewConstraintId()),
-            mapTo(_mapTo)
+            mapTo(_mapTo),
+            id(_proof.getNewConstraintId())
         {
             isMapping = true;
             proof << "red";
@@ -212,6 +212,11 @@ namespace pbp {
 
         PolishNotationStep& appendLit(Lit lit){
             proof << " " << lit;
+            return *this;
+        }
+
+        PolishNotationStep& appendLit(ConstraintId cid){
+            proof << " " << cid;
             return *this;
         }
 
