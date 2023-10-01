@@ -232,7 +232,7 @@ bool Solver::add_xor_clause_inter(
         xorclauses.push_back(Xor(ps, rhs, tmp_xor_clash_vars));
         xorclauses_orig.push_back(Xor(ps, rhs, tmp_xor_clash_vars));
 
-        x.id = proof::xr::newXorHandleFromProofTree<Types>(*proof, x, maybeXor.proofTree));
+        x.id = proof::xr::newXorHandleFromProofTree(*proof, x, maybeXor.proofTree);
         /* TBUDDY_DO(if (frat->enabled()) xorclauses.back().create_bdd_xor()); */
         /* TBUDDY_DO(if (frat->enabled()) xorclauses_orig.back().create_bdd_xor()); */
     }

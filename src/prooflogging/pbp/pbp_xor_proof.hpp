@@ -3,9 +3,9 @@
 #include <vector>
 #include "prooflogging/pbp/pbp_proof.hpp"
 #include "prooflogging/ConstraintId.hpp"
+#include "xor.h"
 
 namespace xorp {
-    struct Xor;
     class BDD;
 }
 
@@ -20,7 +20,7 @@ namespace proof {
 
             XorHandle newXorHandleFromProofTree(
                 pbp::Proof& proof,
-                xorp::Xor& xr,
+                Xor& xr,
                 xorp::BDD& proofTree);
 
             XorHandle xorFromEquality(ConstraintId a, ConstraintId b);
@@ -34,9 +34,7 @@ namespace proof {
                 const XorHandle& xr,
                 const std::vector<Lit>& reasonClause);
 
-            void deleteXor(
-                pbp::Proof& proof,
-                const XorHandle& xr);
+            void deleteXor( pbp::Proof& proof, const XorHandle& xr);
         }
     }
 }

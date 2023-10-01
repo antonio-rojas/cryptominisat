@@ -1,13 +1,249 @@
+#include <cassert>
+#include <map>
+#include <utility>
+
 #include "pbp_xor_proof.hpp"
 #include "pbp_proof.hpp"
+#include "xor.h"
+#include "clause.h"
+
 /* #include "xorengine/private/myXor.hpp" */
-#include "xorengine/XorDetector.ipp"
-#include "prooflogging/xor_2_clauses.hpp"
+/* #include "xorengine/XorDetector.ipp" */
+/* #include "prooflogging/xor_2_clauses.hpp" */
 #include "solvertypesmini.h"
 
 using namespace proof::pbp;
+using std::make_pair;
 using namespace proof::pbp::xr;
 using namespace xorp;
+typedef uint32_t BDDNodeRef;
+
+class BDDNode {
+public:
+    BDDNodeRef left = 0; // true
+    BDDNodeRef right = 0; // false
+    BDDNodeRef parent = 0; // false
+    size_t var;
+    proof::ConstraintId constraintID = {0};
+};
+
+inline std::ostream& operator<< (std::ostream &out, const BDDNode &node) {
+    out << "( l:" << node.left << " r:" << node.right
+        << " p:" << node.parent << " var:" << node.var << " cId:" << node.constraintID << ")";
+    return out;
+}
+
+class BDD {
+public:
+    std::vector<BDDNode> data;
+
+    struct {
+        size_t nOpen = 0;
+    } stats;
+
+    size_t nVars;
+    bool rhs;
+
+    size_t constraintCounter = 0;
+
+    BDD() {
+        data.emplace_back();
+    }
+
+    bool isRoot(BDDNode& node) {
+        return &node == data.data();
+    }
+
+    bool isLeaf(BDDNode& node) {
+        return node.constraintID != proof::ConstraintId::undef();
+    }
+
+    bool isEmpty(BDDNode& node) {
+        assert(node.left != 0 || node.right == 0);
+        return node.left == 0 && node.constraintID == proof::ConstraintId::undef();
+    }
+
+    BDDNode& get(BDDNodeRef ref) {
+        assert(0 <= ref && ref < data.size());
+        return data[ref];
+    }
+
+    BDDNodeRef newNode(BDDNodeRef parent) {
+        data.emplace_back();
+        data.back().parent = parent;
+        return data.size() - 1;
+    }
+
+
+    std::unordered_set<size_t> getQueried(BDDNode& node){
+        std::unordered_set<size_t> result;
+
+        if (isEmpty(node) && isRoot(node)) {
+            return result;
+        }
+
+        if (!isEmpty(node)) {
+            result.insert(node.var);
+        }
+
+        BDDNode* current = &node;
+        while (!isRoot(*current)) {
+            current = &get(current->parent);
+            result.insert(current->var);
+        }
+
+        return result;
+    }
+
+    bool isOkToBeOpen(BDDNodeRef ref) {
+        assert(isEmpty(get(ref)));
+
+        size_t nVars = 0;
+        bool rhs = false;
+        while (!isRoot(get(ref))) {
+            BDDNode& parent = get(get(ref).parent);
+            // maybe the node is not open because we found a clause
+            // that covers it after creation of the node
+            if (isLeaf(parent)) {
+                return true;
+            }
+            if (parent.left == ref) {
+                rhs ^= true;
+            }
+            nVars += 1;
+            ref = get(ref).parent;
+        }
+
+        stats.nOpen += 1;
+        return (nVars == this->nVars) && (rhs == this->rhs);
+    }
+
+    bool isHappy() {
+        stats.nOpen = 0;
+        for (BDDNodeRef ref = 0; ref < data.size(); ref++) {
+            if (isEmpty(get(ref))) {
+                if (!isOkToBeOpen(ref)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    void addClause(Clause& clause) {
+        constraintCounter += 1;
+        std::map<size_t, bool> lits;
+        for (auto l: clause) lits[l.var()] = l.sign();
+        if (lits.size() == 1) return;
+
+        std::vector<BDDNodeRef> open;
+        open.push_back(0);
+
+        while (open.size() != 0) {
+            BDDNodeRef current = open.back();
+            open.pop_back();
+
+            BDDNode& node = get(current);
+
+            if (isEmpty(node)) {
+                auto queried = getQueried(node);
+
+                auto it = lits.begin();
+                for (; it != lits.end(); ++it) {
+                    size_t var = it->first;
+                    if (queried.find(var) == queried.end()) {
+                        break;
+                    }
+                }
+
+                if (it == lits.end()) {
+                    node.constraintID = clause.stats.ID;
+                } else {
+                    BDDNodeRef left = newNode(current);
+                    BDDNodeRef right = newNode(current);
+                    // get new reference as newNode might invalidate previous reference
+                    BDDNode& node = get(current);
+                    node.var = it->first;
+                    node.left = left;
+                    node.right = right;
+                    bool isNegated = it->second;
+                    if (isNegated) {
+                        open.push_back(node.left);
+                    } else {
+                        open.push_back(node.right);
+                    }
+                }
+            } else if (!isLeaf(node)) {
+                size_t var = node.var;
+                auto it = lits.find(var);
+                if (it == lits.end()) {
+                    auto queried = getQueried(node);
+                    bool isClosingNode = true;
+                    for (auto pair: lits) {
+                        size_t var = pair.first;
+                        auto it = queried.find(var);
+                        if (it == queried.end()) {
+                            isClosingNode = false;
+                            break;
+                        }
+                    }
+                    if (isClosingNode) {
+                        node.constraintID = clause.stats.ID;
+                    } else {
+                        open.push_back(node.left);
+                        open.push_back(node.right);
+                    }
+                } else {
+                    bool isNegated = it->second;
+                    if (isNegated) {
+                        open.push_back(node.left);
+                    } else {
+                        open.push_back(node.right);
+                    }
+                }
+            }
+        }
+    }
+
+
+    void addDotNodeStyle(std::ostream &out, BDDNode& node, size_t idx) {
+        out << "  " << idx << " [label=\"";
+        if (isLeaf(node)) {
+            out << "c" << node.constraintID;
+        } else if (isEmpty(node)) {
+            out << "empty";
+        } else {
+            out << node.var;
+        }
+        out << "\"";
+
+        if (isEmpty(node)) {
+            if (isOkToBeOpen(idx)) {
+                out << ",color=green,style=filled";
+            } else {
+                out << ",color=red,style=filled";
+            }
+        }
+
+        out << "];\n";
+    }
+
+
+    void toDOT(std::ostream &out){
+        out << "digraph G { \n";
+        for (size_t i = 0; i < data.size(); i++) {
+            BDDNode& node = get(i);
+            addDotNodeStyle(out, node, i);
+
+            if (!isLeaf(node) && !isEmpty(node)) {
+                out << "  " << i << " -> " << node.left << " [label=\"t\"];\n";
+                out << "  " << i << " -> " << node.right << " [label=\"f\"];\n";
+            }
+        }
+        out << "}";
+    }
+};
 
 class FullAdder {
 private:
@@ -130,7 +366,7 @@ proof::ConstraintId proof::pbp::xr::reasonGeneration(
 class XORFromClauses {
 private:
     Proof& proof;
-    xorp::Xor& xr;
+    Xor& xr;
 
     struct XorWithFreeParity {
         XorHandle id;
@@ -141,33 +377,35 @@ private:
         #if !defined(NDEBUG)
             proof << "* derive xor with free parity\n";
         #endif
-        assert(xr.lits.size() > 1);
+        assert(xr.vars.size() > 1);
 
         XorWithFreeParity result;
 
         std::vector<FullAdder> adderChain;
 
-        auto it = xr.lits.rbegin();
-        if (xr.lits.size() % 2 == 0) {
-            assert(xr.lits.size() >= 2);
-            Lit x1 = *it;
-            Lit x2 = *(++it);
+        auto it = xr.vars.rbegin();
+        if (xr.vars.size() % 2 == 0) {
+            assert(xr.vars.size() >= 2);
+            Lit x1 = Lit(*it, false);
+            Lit x2 = Lit(*(++it), xr.rhs);
             adderChain.emplace_back(proof, x1, x2);
         } else {
-            assert(xr.lits.size() >= 3);
-            Lit x1 = *it;
-            Lit x2 = *(++it);
-            Lit x3 = *(++it);
+            assert(xr.vars.size() >= 3);
+            Lit x1 = Lit(*it, false);
+            Lit x2 = Lit(*(++it), false);
+            Lit x3 = Lit(*(++it), xr.rhs);
             adderChain.emplace_back(proof, x1, x2, x3);
         }
-        while (++it != xr.lits.rend()) {
-            Lit x1 = *it;
-            Lit x2 = *(++it);
+
+        while (++it != xr.vars.rend()) {
+            Lit x1 = Lit(*it, false);
+            Lit x2 = Lit(*(++it), false);
             adderChain.emplace_back(proof, adderChain.back().z, x1, x2);
         }
 
         result.parityLit = adderChain.back().z;
 
+        // Geq
         {
             PolishNotationStep stepGeq(proof);
 
@@ -181,6 +419,7 @@ private:
             result.id.a = stepGeq.id;
         }
 
+        // Leq
         {
             PolishNotationStep stepLeq(proof);
 
@@ -231,7 +470,7 @@ private:
         const XorWithFreeParity& fp,
         const std::vector<proof::ConstraintId>& constraints
     ) {
-        assert(constraints.size() == (1ul << (xr.lits.size() - 1)));
+        assert(constraints.size() == (1ul << (xr.vars.size() - 1)));
 
         Lit parityLit(fp.parityLit);
         if (xr.rhs == true) {
@@ -242,9 +481,9 @@ private:
         PolishNotationStep step(proof);
         for (size_t i = 0; i < constraints.size(); i++) {
             uint32_t assignment = (i << 1);
-            std::cout << popCountMod2(assignment) << std::endl;
-            assignment += popCountMod2(assignment) ^ !xr.rhs;
-            std::vector<Lit> clause = number2clause(xr.lits, assignment);
+            std::cout << __builtin_popcount(assignment) << std::endl;
+            assignment += __builtin_popcount(assignment) ^ !xr.rhs;
+            std::vector<Lit> clause = number2clause(xr.vars, assignment);
             clause.push_back(parityLit);
 
             reasonGeneration(step, fp.id, clause);
@@ -417,21 +656,17 @@ public:
     XorHandle fromProofTree(xorp::BDD& tree) {
         auto fp = xorWithFreeParity();
         auto unit = unitFromProofTree(fp, tree);
-        #if !defined(NDEBUG)
-            checkUnit(fp, unit);
-        #endif
+        assert(checkUnit(fp, unit));
         return fixParity(fp, unit);
     }
 
 };
 
-template<typename Types>
 XorHandle proof::pbp::xr::newXorHandleFromProofTree(proof::pbp::Proof& proof, xorp::Xor& xr, xorp::BDD& proofTree) {
     XORFromClauses helper(proof, xr);
     return helper.fromProofTree(proofTree);
 }
 
-template<typename Types>
 void proof::pbp::xr::deleteXor(proof::pbp::Proof& proof, const XorHandle& xr) {
     DeleteStep step(proof);
     step.addDeletion(xr.a);
